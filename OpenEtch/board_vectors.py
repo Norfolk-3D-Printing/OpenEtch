@@ -17,11 +17,18 @@ class Vectorizer:
     offset_x = 0.15
     offset_y = 0.15
 
-    def __init__(self, pcb: PCB, width_multiplier=1.03):
+    def __init__(self, pcb: PCB, width_multiplier=1.03, x_scale_adjustment=1.00, y_scale_adjustment=1.00):
         self.internal_name = str(uuid.uuid4())
         self.pcb = pcb
 
         self.width_multiplier = width_multiplier
+
+        self.offset_x = -self.pcb.min_xy[0]
+        self.offset_y = -self.pcb.min_xy[1]
+
+        self.scale_x = x_scale_adjustment
+        self.scale_y = y_scale_adjustment
+
 
         w, h = self.pcb.get_shape()
         self.shape = w, h
@@ -80,8 +87,8 @@ class Vectorizer:
                 if command[0] == "line":
                     x1, y1, x2, y2, width = command[1], command[2], command[3], command[4], command[5]
 
-                    points = self.trace_to_polygon((x1+self.offset_x) * mm, (y1+self.offset_y) * mm,
-                                                   (x2+self.offset_x) * mm, (y2+self.offset_y) * mm,
+                    points = self.trace_to_polygon((x1+self.offset_x) * mm * self.scale_x, (y1+self.offset_y) * mm  * self.scale_y,
+                                                   (x2+self.offset_x) * mm * self.scale_x, (y2+self.offset_y) * mm  * self.scale_y,
                                                    (width * self.width_multiplier) * mm)
 
                     path = active_canvas.beginPath()
@@ -96,8 +103,8 @@ class Vectorizer:
                     active_canvas.drawPath(path, stroke=0, fill=1)
 
                 if command[0] == "blit":
-                    points = [((x + self.offset_x) * mm,
-                               (y + self.offset_y) * mm) for x, y in command[1]]
+                    points = [((x + self.offset_x) * mm * self.scale_x,
+                               (y + self.offset_y) * mm * self.scale_y) for x, y in command[1]]
 
                     path = active_canvas.beginPath()
                     path.moveTo(points[0][0], points[0][1])
@@ -111,7 +118,7 @@ class Vectorizer:
                 if command[0] == "hole":
                     x, y, diameter = command[1:]
 
-                    active_canvas.circle(x*mm, y*mm, diameter*mm, stroke=0, fill=1)
+                    active_canvas.circle((x + self.offset_x)*mm * self.scale_x, (y + self.offset_y)*mm * self.scale_y, (diameter/2)*mm, stroke=0, fill=1)
 
     def __vectorise(self, active_canvas, components: list[str]):
         for component_name in self.pcb:
