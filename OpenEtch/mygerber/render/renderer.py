@@ -37,6 +37,19 @@ class GerberView:
         self.image = Image.new("RGB" if in_colour else "1", (shape[0], shape[1]+4), base_colour)
         self.draw = ImageDraw.Draw(self.image)
 
+    def draw_pcb_from_outline(self, layer, colour):
+        points = []
+        width = 1
+        if hasattr(layer, "commands"):
+            for command in layer.commands:
+                if command[0] == "line":
+                    x1, y1, x2, y2, width = command[1], command[2], command[3], command[4], command[5]
+
+                    points.append((round((x1 + self.offset_x) * self.scale), round(self.shape[1] - (y1 + self.offset_y) * self.scale)))
+                    points.append((round((x2 + self.offset_x) * self.scale), round(self.shape[1] - (y2 + self.offset_y) * self.scale)))
+
+        self.draw.polygon(points, colour, width=width)
+
     def show(self):
         self.image.show()
 
@@ -46,7 +59,7 @@ class GerberView:
                 if command[0] == "line":
                     x1, y1, x2, y2,width = command[1], command[2], command[3], command[4], command[5]
 
-                    self.draw.line([round((x1+ self.offset_x) * self.scale), self.shape[1] - round((y1+ self.offset_y) * self.scale), round((x2+self.offset_x) * self.scale), self.shape[1] - round((y2+ self.offset_y) * self.scale)], colour, round(width))
+                    self.draw.line([round((x1+ self.offset_x) * self.scale), self.shape[1] - round((y1+ self.offset_y) * self.scale), round((x2+self.offset_x) * self.scale), self.shape[1] - round((y2+ self.offset_y) * self.scale)], colour, round(width * self.scale))
 
                 if command[0] == "blit":
                     points = [(round((x+self.offset_x) * self.scale), self.shape[1] - round((y + self.offset_y) * self.scale)) for x, y in command[1]]

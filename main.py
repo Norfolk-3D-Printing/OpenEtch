@@ -1,9 +1,13 @@
-import OpenEtch
+"""import OpenEtch
 from OpenEtch import Vectorizer
 
 path = r"test_gerber.zip"
 
 pcb = OpenEtch.PCB(path)
 vectorizer = Vectorizer(pcb)
-vectorizer.save("demo_output")
+vectorizer.save("demo_output")"""
+
+from OpenEtch.gui.app import App
+
+App().start()
 
