@@ -1,1 +1,3 @@
-Docs coming soon
+Supports: Python 3.12
+
+More docs coming soon...
