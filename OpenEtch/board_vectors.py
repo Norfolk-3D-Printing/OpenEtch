@@ -17,7 +17,7 @@ class Vectorizer:
     offset_x = 0.15
     offset_y = 0.15
 
-    def __init__(self, pcb: PCB, width_multiplier=1.03, x_scale_adjustment=1.00, y_scale_adjustment=1.00):
+    def __init__(self, pcb: PCB, config: dict, width_multiplier=1.03, x_scale_adjustment=1.00, y_scale_adjustment=1.00):
         self.internal_name = str(uuid.uuid4())
         self.pcb = pcb
 
@@ -34,12 +34,12 @@ class Vectorizer:
         self.shape = w, h
         print(f"[Vectorizer] Creating top canvas: (w: {w}, h: {h})")
         self.canvas_top = canvas.Canvas(f"{self.internal_name}_top.pdf", pagesize=(w * mm, h * mm))
-        self.__vectorise(self.canvas_top, ["Outline", "TopLayer", "PlatedThoughHole", "NoPlateThoughHole", "Vias"])
+        self.__vectorise(self.canvas_top, config["top"])
 
         if self.pcb.has_bottom_layer():
             print(f"[Vectorizer] Creating bottom canvas: (w: {w}, h: {h})")
             self.canvas_bottom = canvas.Canvas(f"{self.internal_name}_bottom.pdf", pagesize=(w * mm, h * mm))
-            self.__vectorise(self.canvas_bottom, ["Outline", "BottomLayer", "PlatedThoughHole", "NoPlateThoughHole", "Vias"])
+            self.__vectorise(self.canvas_bottom, config["bottom"])
 
     @staticmethod
     def trace_to_polygon(x1, y1, x2, y2, width, arc_steps=12):

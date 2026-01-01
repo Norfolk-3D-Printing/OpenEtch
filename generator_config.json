@@ -1,0 +1,1 @@
+{"Etch Masks": {"enabled": true, "run_func": "generate_etching_mask"}, "Silk Masks": {"enabled": true, "run_func": "generate_silk_mask"}, "Hole CNC GCODE": {"enabled": false, "run_func": null}}

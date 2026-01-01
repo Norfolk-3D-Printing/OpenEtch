@@ -1,7 +1,9 @@
 import pygame
 from tkinter.filedialog import askopenfilename
+import json
 import os
 
+from . import generator
 from ..mygerber import PCB
 from ..mygerber.render.renderer import GerberView
 from ..board_vectors import Vectorizer
@@ -33,18 +35,19 @@ class App:
 
         self.__buttons = {
             "settings": [
-                ("Open File", (5, 20), self.open_file, None),
-                ("Generate All", (5, 50), self.generate_all, None),
-                ("+", (82, 50), self.open_generate_all_settings, None)
+                {"text": "Open File", "pos": (5, 20), "func": self.open_file},
+                {"text": "Generate All", "pos": (5, 50), "func": self.generate_all},
+                {"text": "+", "pos": (82, 50), "func": self.open_generate_all_settings}
             ],
 
             "config": [],
 
             "config_constant": [
-                ("X", (self.config_panel_width - 12, 4), self.__close_config, None)
+                {"text": "X", "pos": (self.config_panel_width - 12, 4), "func": self.__close_config}
             ]
         }
 
+        self.generate_all_config = json.load(open("generator_config.json", "r"))
 
         self.__preview_panel = pygame.Surface((self.w - self.settings_panel_width, self.h))
         self.__settings_panel = self.__render_settings_panel()
@@ -53,22 +56,61 @@ class App:
     def __close_config(self):
         self.__config_panel = None
         self.__buttons["config"] = []
-        self.__buttons["config_constant"] = [
-                ("X", (self.config_panel_width - 12, 4), self.__close_config, None)
-            ]
 
     def generate_all(self):
-        print("Not Implemented!")
+        if not self.pcb:
+            print("No PCB Loaded!")
+            return
+
+        output_dir = f"{self.pcb.path}_output"
+        os.makedirs(output_dir, exist_ok=True)
+
+        for task in self.generate_all_config:
+            data = self.generate_all_config[task]
+
+            if data["enabled"]:
+                print(f"Generating: {task}")
+                run_func = data["run_func"]
+
+                if run_func and hasattr(generator, run_func):
+                    getattr(generator, run_func)(self.pcb, output_dir)
+
+            else:
+                print(f"Skipping: {task}")
+
+
+
+
+    def toggle_generator_setting(self, text):
+        enabled = self.generate_all_config[text]["enabled"]
+        self.generate_all_config[text]["enabled"] = not enabled
+
+        json.dump(self.generate_all_config, open("generator_config.json", "w"))
+
+        self.open_generate_all_settings()
 
     def open_generate_all_settings(self):
         config_panel = self.__render_config_panel()
 
         self.__buttons["config"] = [
-            ("Generator Settings", (5, 5), None, None)
+            {"text": "Generator Settings", "pos": (5, 5), "func": None}
         ]
 
-        self.__render_buttons(config_panel, self.__buttons["config"], click_offset_x=self.settings_panel_width)
+        y = 30
+        for config_option in self.generate_all_config:
+            config_data = self.generate_all_config[config_option]
 
+            self.__buttons["config"].append(
+                {"text": config_option, "pos": (30, y), "func": None}
+            )
+
+            self.__buttons["config"].append(
+                {"text": f"[{'X' if config_data['enabled'] else '  '}]", "pos": (8, y), "func": self.toggle_generator_setting, "args": (config_option,)}
+            )
+
+            y += 20
+
+        self.__render_buttons(config_panel, self.__buttons["config"], click_offset_x=self.settings_panel_width)
         self.__config_panel = config_panel
 
     def open_file(self):
@@ -116,13 +158,17 @@ class App:
 
 
     def __render_buttons(self, surface, buttons, click_offset_x=0, click_offset_y=0):
-        for i, (text, xy, func, _) in enumerate(buttons):
+        for i, button in enumerate(buttons):
+            text = button.get("text")
+            xy = button.get("pos")
+
             rect = self.font.render(text, True, (255, 255, 255))
 
             pygame.draw.rect(surface, (100, 100, 100), (xy[0] - 2, xy[1] - 2, rect.get_width() + 4, rect.get_height() + 4))
             surface.blit(rect, xy)
 
-            buttons[i] = (text, (xy[0] + click_offset_x, xy[1] + click_offset_y), func, rect)
+            buttons[i]["rect"] = rect
+            buttons[i]["pos"] = (xy[0] + click_offset_x, xy[1] + click_offset_y)
 
     def __render_settings_panel(self) -> pygame.Surface:
         surface = pygame.Surface((self.settings_panel_width, self.h))
@@ -135,6 +181,10 @@ class App:
     def __render_config_panel(self) -> pygame.Surface:
         surface = pygame.Surface((self.config_panel_width, self.h))
         surface.fill(self.CONFIGS_BACKGROUND_COLOUR)
+
+        self.__buttons["config_constant"] = [
+            {"text": "X", "pos": (self.config_panel_width - 12, 4), "func": self.__close_config}
+        ]
 
         self.__render_buttons(surface, self.__buttons["config_constant"], click_offset_x=self.settings_panel_width)
 
@@ -154,13 +204,23 @@ class App:
 
                     if mx < self.settings_panel_width or (self.__config_panel and mx < self.config_panel_width + self.settings_panel_width):
                         for key in self.__buttons:
-                            for text, (x, y), func, rect in self.__buttons[key]:
+                            for button in self.__buttons[key]:
+                                rect = button.get("rect")
+                                x, y = button.get("pos")
+
                                 if not rect:
                                     continue
 
+
                                 if x < mx < x + rect.get_width() and y < my < y + rect.get_height():
+                                    func = button.get("func")
+                                    args = button.get("args")
+
                                     if func:
-                                        func()
+                                        if args:
+                                            func(*args)
+                                        else:
+                                            func()
 
                     else:  # Clicked on PCB preview
                         pass
